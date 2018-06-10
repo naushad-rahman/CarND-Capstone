@@ -134,7 +134,7 @@ class TLDetector(object):
         elif self._pass_threshold():
             self.last_wp = light_wp
             msg = self._prepare_result_msg(state, light_wp)
-            rospy.loginfo(msg)
+            #rospy.loginfo(msg)
             self.upcoming_red_light_pub.publish(msg)
         else:
             msg = self._prepare_result_msg(self.state, self.last_wp)
@@ -299,12 +299,14 @@ class TLDetector(object):
                 temp_wp_idx = self.get_closest_waypoint(line[0],line[1])
                 d = temp_wp_idx - car_wp_idx
                 
-                if d >=0 and d < diff and d<200:
+                if d >=0 and d < diff and d<100:
+                    rospy.loginfo(d)
                     diff = d
                     closest_light = light
                     line_wp_idx = temp_wp_idx
 
-        if closest_light:
+        if closest_light and closest_light is not None:
+            rospy.loginfo("Inside classifer")
             state = self.get_light_state(closest_light)
             return line_wp_idx ,state
         

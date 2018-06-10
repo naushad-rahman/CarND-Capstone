@@ -275,7 +275,7 @@ class TLClassifier(object):
               # If the confidence of detection is too slow, 0.3 for simulator    
              
               #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-              elif scores[idx]<=0.15:
+              elif scores[idx]<=0.3:
               #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
                   box=[0, 0, 0, 0]
                   print('low confidence:', scores[idx])

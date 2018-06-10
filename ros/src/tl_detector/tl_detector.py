@@ -187,19 +187,11 @@ class TLDetector(object):
 
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
-        processed_img = cv_image[0:600, 0:800] # was [20:400, 0:800]
+        
 
-        #TODO use light location to zoom in on traffic light in image
-        #Prepare image for classification
-        if self.sim_testing: #we cut 50 pixels left and right of the image and the bottom 100 pixels
-            width, height, _ = cv_image.shape
-            x_start = int(width * 0.10)
-            x_end = int(width * 0.90)
-            y_start = 0
-            y_end = int(height * 0.85)
-            processed_img = cv_image[y_start:y_end, x_start:x_end]
-        else:   # real-case testing. Reduce image size to avoid light reflections on hood.
-            processed_img = cv_image[0:600, 0:800] # was [20:400, 0:800]           
+       
+       
+        processed_img = cv_image[0:600, 0:800] # was [20:400, 0:800]           
 
         #Convert image to RGB format
         processed_img = cv2.cvtColor(processed_img, cv2.COLOR_BGR2RGB)
@@ -230,62 +222,33 @@ class TLDetector(object):
         
         unknown = False
 
-        if self.sim_testing:
-            # find traffic light in image.
-            b = self.light_classifier.get_localization(img_full_np)
-            print(b)
-            # If there is no detection or low-confidence detection
-            if np.array_equal(b, np.zeros(4)):
-               print ('unknown')
-               unknown = True
-            else:    #we can use the classifier to classify the state of the traffic light
-               img_np = cv2.resize(processed_img[b[0]:b[2], b[1]:b[3]], (32, 32))
-               self.light_classifier.get_classification(img_np)
-               light_state = self.light_classifier.signal_status
+      
+      
+        b, conf, cls_idx = self.light_classifier.get_localization_classification(img_full_np, visual=False)
+        
+        if np.array_equal(b, np.zeros(4)):
+            print ('unknown')
+            unknown = True
         else:
-            print("Get in Localization-Classification")
-            b, conf, cls_idx = self.light_classifier.get_localization_classification(img_full_np, visual=False)
-            print("Get out of Localization-Classification")
-            if np.array_equal(b, np.zeros(4)):
-                print ('unknown')
-                unknown = True
+            #light_state = cls_idx
+            if cls_idx == 1.0:
+                print('Green', b)
+                light_state = TrafficLight.GREEN
+            elif cls_idx == 2.0:
+                print('Red', b)
+                light_state = TrafficLight.RED
+            elif cls_idx == 3.0:
+                print('Yellow', b)
+                light_state = TrafficLight.YELLOW
+            elif cls_idx == 4.0:
+                print('Unknown', b)
+                light_state = TrafficLight.UNKNOWN
             else:
-                #light_state = cls_idx
-                if cls_idx == 1.0:
-                    print('Green', b)
-                    light_state = TrafficLight.GREEN
-                elif cls_idx == 2.0:
-                    print('Red', b)
-                    light_state = TrafficLight.RED
-                elif cls_idx == 3.0:
-                    print('Yellow', b)
-                    light_state = TrafficLight.YELLOW
-                elif cls_idx == 4.0:
-                    print('Unknown', b)
-                    light_state = TrafficLight.UNKNOWN
-                else:
-                    print('Really Unknown! Didn\'t process image well', b)
-                    light_state = TrafficLight.UNKNOWN
+                print('Really Unknown! Didn\'t process image well', b)
+                light_state = TrafficLight.UNKNOWN
                     
-        #check prediction against ground truth
-        if self.sim_testing:
-            rospy.loginfo("Upcoming light %s, True state: %s", light_state, light_state_via_msg)
-            #compare detected state against ground truth for (simulator only)
-            if not unknown:
-                self.count = self.count + 1
-                filename = "sim_image_" + str(self.count)
-                if (light_state == light_state_via_msg):
-                   self.tp_classification = self.tp_classification + 1
-                   #filename = filename + "_good_" + str(light_state) + ".jpg"
-                else:
-                   filename = filename + "_bad_" + str(light_state) + ".jpg"
-                    #cv2.imwrite(filename, cv_image)
-                self.total_classification = self.total_classification + 1
-                accuracy = (self.tp_classification / self.total_classification) * 100
-                if self.count % 20 == 0:
-                    rospy.loginfo("Classification accuracy: %s", accuracy)
-        else: #site testing
-            self.count = self.count +1
+        
+        self.count = self.count +1
             #filename = "site_image_" + str(self.count) + str(light_state) + ".jpg"
             #cv2.imwrite(filename, cv_image)
             
@@ -335,7 +298,7 @@ class TLDetector(object):
                 line = stop_line_positions[i]
                 temp_wp_idx = self.get_closest_waypoint(line[0],line[1])
                 d = temp_wp_idx - car_wp_idx
-                rospy.loginfo("diff={:d}".format(d))
+                
                 if d >=0 and d < diff and d<200:
                     diff = d
                     closest_light = light

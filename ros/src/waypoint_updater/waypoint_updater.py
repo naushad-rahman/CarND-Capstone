@@ -192,7 +192,11 @@ class WaypointUpdater(object):
 
     def slow_waypoints(self, closestWaypoint, tl_index, waypoints):
         dist_to_TL = self.distance_to_tl
-        slow_decel = (self.car_curr_vel ** 2)/(2 * dist_to_TL)
+        if abs(dist_to_TL)> 0.001 :
+          slow_decel = (self.car_curr_vel ** 2)/(2 * dist_to_TL)
+        else:
+          slow_decel = -5
+
         if slow_decel > self.decel_limit:
            slow_decel = self.decel_limit
         init_vel = self.car_curr_vel

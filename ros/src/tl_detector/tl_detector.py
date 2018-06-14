@@ -299,7 +299,7 @@ class TLDetector(object):
                 temp_wp_idx = self.get_closest_waypoint(line[0],line[1])
                 d = temp_wp_idx - car_wp_idx
                 
-                if d >=0 and d < diff and d<100:
+                if d >=0 and d < diff and d<200:
                     rospy.loginfo(d)
                     diff = d
                     closest_light = light

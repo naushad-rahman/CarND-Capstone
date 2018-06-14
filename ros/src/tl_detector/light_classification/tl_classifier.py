@@ -44,35 +44,14 @@ class TLClassifier(object):
         self.upper_red_2 = np.array([180, 255, 255], dtype = "uint8")
 
         os.chdir(cwd)
-        
-        #if sim_testing, we use a detection and classification models
-        #if site_testing, we use a single model which does both detection and classification
-        
-        if sim_testing: #we use different models for classification
-            #keras classification model
-            self.cls_model = load_model('tl_model_5.h5') #switched to model 5 for harsh light
-            self.graph = tf.get_default_graph()
-
-            #tensorflow localization/detection model
-            detect_model_name = 'ssd_mobilenet_v1_coco_11_06_2017' #was 'ssd_inception_v2_coco_11_06_2017'
-            PATH_TO_CKPT = detect_model_name + '/frozen_inference_graph.pb'
+        detect_model_name = 'classifier'
+        PATH_TO_CKPT = detect_model_name + '/frozen_inference_graph.pb'
             # setup tensorflow graph
-            self.detection_graph = tf.Graph()
-            # configuration for possible GPU
-            config = tf.ConfigProto()
-            config.gpu_options.allow_growth = True
-            # load frozen tensorflow detection model and initialize
-            # the tensorflow graph
-        
-        else: # site testing where we load the localization+classification model        
-            detect_model_name = 'ssd_kyle_v2'
-            PATH_TO_CKPT = detect_model_name + '/frozen_inference_graph.pb'
-            # setup tensorflow graph
-            self.detection_graph = tf.Graph()
+        self.detection_graph = tf.Graph()
         
             # configuration for possible GPU use
-            config = tf.ConfigProto()
-            config.gpu_options.allow_growth = True
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
             # load frozen tensorflow detection model and initialize 
             # the tensorflow graph        
         

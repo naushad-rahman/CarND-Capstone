@@ -21,7 +21,7 @@ import time
 import numpy as np
 
 
-STATE_COUNT_THRESHOLD = 3
+STATE_COUNT_THRESHOLD = 1
 
 # gamma correction function used to reduce high sun exposure 
 def adjust_gamma(image, gamma=1.0):

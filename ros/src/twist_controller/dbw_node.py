@@ -62,8 +62,8 @@ class DBWNode(object):
         self.dbw_enabled = False
 
         self.twist_controller = TwistController(max_steer_angle, accel_limit, decel_limit)
-        self.gain_controller = GainController(max_throttle=1.0, max_brake=1.0, max_steer_angle=max_steer_angle,
-                                              delay_seconds=1.0, steer_ratio=steer_ratio)
+        self.gain_controller = GainController(max_throttle=0.2, max_brake=0.9, max_steer_angle=max_steer_angle,
+                                              delay_seconds=5.0, steer_ratio=steer_ratio)
 
         self.goal_acceleration = 0
         self.goal_yaw_rate = 0.

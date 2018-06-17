@@ -16,7 +16,7 @@ class GainController(object):
         steer_angle = goal_angular_velocity * self.steer_ratio
         brake = 0
         if throttle < 0.:
-            brake = 0. - throttle
+            brake = abs(0. - throttle)
             throttle = 0.
         return throttle, brake, steer_angle
         

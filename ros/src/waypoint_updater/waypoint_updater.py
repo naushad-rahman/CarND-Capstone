@@ -9,6 +9,8 @@ import os
 import time
 import tf
 from numpy import random
+from scipy.spatial import KDTree
+import numpy as np
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
 
@@ -55,6 +57,11 @@ class WaypointUpdater(object):
         self.final_waypoints = []
         self.tl_idx = None
         self.tl_state = None
+
+
+        self.waypoints_2d = None
+        self.waypoint_tree = None
+
         self.do_work()
 
     def do_work(self):
@@ -72,6 +79,8 @@ class WaypointUpdater(object):
                 if (self.car_position != None and self.waypoints != None and self.tl_state != None and self.car_curr_vel != None):
                        self.safe_distance = (self.car_curr_vel ** 2)/(2 * self.decel_limit * SAFE_DECEL_FACTOR)
                        self.closestWaypoint = self.NextWaypoint(self.car_position, self.car_yaw, self.waypoints)
+                       
+                       
                        if self.tl_idx != None:
                           self.distance_to_tl = self.distance(self.waypoints, self.closestWaypoint, self.tl_idx)
                        self.car_action = self.desired_action(self.tl_idx, self.tl_state, self.closestWaypoint, self.waypoints)
@@ -89,6 +98,30 @@ class WaypointUpdater(object):
                                rospy.logwarn("[WP_UPDATER] /current_velocity not received")
                 rate.sleep()
 
+
+    def get_closest_waypoint_idx(self):
+
+        print('position',self)
+        return -1 
+        x = self.pose.pose.position.x
+        y = self.pose.pose.position.y
+        closest_idx = self.waypoint_tree.query([x,y],1)[1] 
+
+        #check if closest is ahead or behind vechicle
+        closest_coord = self.waypoints_2d[closest_idx]
+        prev_coord = self.waypoints_2d[closest_idx-1]
+
+        #Equation of hyperplane through closest_Coords
+        cl_vect =np.array(closest_coord)
+        prev_vect = np.array(prev_coord)
+        pos_vect = np.array([x,y])
+
+        val = np.dot(cl_vect-prev_vect,pos_vect-cl_vect)
+
+        if val > 0:
+            closest_idx = (closest_idx + 1) % len(self.waypoints_2d)
+        return closest_idx
+
     def pose_cb(self, msg):
         car_pose = msg.pose
         self.car_position = car_pose.position 
@@ -101,6 +134,11 @@ class WaypointUpdater(object):
         for waypoint in msg.waypoints:
                 self.waypoints.append(waypoint)
         self.base_waypoints_sub.unregister()
+        waypoints = msg
+        if not self.waypoints_2d:
+            self.waypoints_2d = [[waypoint.pose.pose.position.x,waypoint.pose.pose.position.y] for waypoint in waypoints.waypoints ]
+            self.waypoint_tree = KDTree(self.waypoints_2d)
+            rospy.loginfo("Naushad _niha debug %d", len(self.waypoints_2d))
         rospy.loginfo("Unregistered from /base_waypoints topic")
 
     def traffic_cb(self, msg):
@@ -195,7 +233,7 @@ class WaypointUpdater(object):
         if abs(dist_to_TL)> 0.001 :
           slow_decel = (self.car_curr_vel ** 2)/(2 * dist_to_TL)
         else:
-          slow_decel = -5
+          slow_decel = self.decel_limit
 
         if slow_decel > self.decel_limit:
            slow_decel = self.decel_limit
@@ -225,40 +263,51 @@ class WaypointUpdater(object):
            self.go_waypoints(closestWaypoint, waypoints)
 
     def publish(self):
+
+        
         final_waypoints_msg = Lane()
         final_waypoints_msg.header.frame_id = '/World'
         final_waypoints_msg.header.stamp = rospy.Time(0)
         final_waypoints_msg.waypoints = list(self.final_waypoints)
         self.final_waypoints_pub.publish(final_waypoints_msg)
+        compare = 'o={:d} dis={:f} '.format(self.closestWaypoint,self.distance_to_tl )
+        rospy.loginfo(compare)
         #v0 = self.get_waypoint_velocity(self.final_waypoints[0])  
         #v1 = self.get_waypoint_velocity(self.final_waypoints[1]) 
         #rospy.logwarn("wp0:%f wp1:%f st:%s d:%f sd:%f",v0,v1,self.car_action,self.distance_to_tl,self.safe_distance)
 
     def closest_waypoint(self, position, waypoints):
-        closestLen = float("inf")
-        closestWaypoint = 0
-        dist = 0.0
-        for idx in range(0, len(waypoints)):
-                x = position.x
-                y = position.y
-                map_x = waypoints[idx].pose.pose.position.x
-                map_y = waypoints[idx].pose.pose.position.y
-                dist = self.distance_any(x, y, map_x, map_y)
-                if (dist < closestLen):
-                        closestLen = dist
-                        closestWaypoint = idx
+        
+        closestWaypoint = self.waypoint_tree.query([position.x,position.y],1)[1] 
+
         return closestWaypoint
 
     def NextWaypoint(self, position, yaw, waypoints):
         closestWaypoint = self.closest_waypoint(position, waypoints)
-        map_x = waypoints[closestWaypoint].pose.pose.position.x
-        map_y = waypoints[closestWaypoint].pose.pose.position.y
-        heading = math.atan2((map_y - position.y), (map_x - position.x))
-        angle = abs(yaw - heading)
-        if (angle > math.pi/4):
-                  closestWaypoint += 1
-                  if (closestWaypoint > len(waypoints)-1):
-                             closestWaypoint -= 1
+
+
+        #check if closest is ahead or behind vechicle
+        closest_coord = self.waypoints_2d[closestWaypoint]
+        prev_coord = self.waypoints_2d[closestWaypoint-1]
+
+        #Equation of hyperplane through closest_Coords
+        cl_vect =np.array(closest_coord)
+        prev_vect = np.array(prev_coord)
+        pos_vect = np.array([position.x,position.y])
+
+        val = np.dot(cl_vect-prev_vect,pos_vect-cl_vect)
+
+        if val > 0:
+            closestWaypoint = (closestWaypoint + 1) % len(self.waypoints_2d)
+
+        # map_x = waypoints[closestWaypoint].pose.pose.position.x
+        # map_y = waypoints[closestWaypoint].pose.pose.position.y
+        # heading = math.atan2((map_y - position.y), (map_x - position.x))
+        # angle = abs(yaw - heading)
+        # if (angle > math.pi/4):
+        #           closestWaypoint += 1
+        #           if (closestWaypoint > len(waypoints)-1):
+        #                      closestWaypoint -= 1
         return closestWaypoint 
 
     def get_waypoint_velocity(self, waypoint):

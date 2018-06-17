@@ -1,7 +1,7 @@
 import rospy
 from math import atan2, pi, sqrt
 
-class GainController(object):
+class Calculate_Brake_Throttle_SteerAngle(object):
     def __init__(self, max_throttle, max_brake, max_steer_angle, delay_seconds, steer_ratio):
         self.max_throttle = max_throttle
         self.max_brake = max_brake

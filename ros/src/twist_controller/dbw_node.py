@@ -6,8 +6,8 @@ from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
 from geometry_msgs.msg import TwistStamped
 import math
 
-from stability_controller import TwistController
-from gain_controller import GainController
+from Controller_Twist import TwistController
+from calculating_twistgain import Calculate_Brake_Throttle_SteerAngle
 
 
 from dynamic_reconfigure.server import Server
@@ -62,8 +62,8 @@ class DBWNode(object):
         self.dbw_enabled = False
 
         self.twist_controller = TwistController(max_steer_angle, accel_limit, decel_limit)
-        self.gain_controller = GainController(max_throttle=0.2, max_brake=0.9, max_steer_angle=max_steer_angle,
-                                              delay_seconds=5.0, steer_ratio=steer_ratio)
+        self.gain_controller = Calculate_Brake_Throttle_SteerAngle(max_throttle=0.2, max_brake=0.5, max_steer_angle=max_steer_angle,
+                                              delay_seconds=1.0, steer_ratio=steer_ratio)
 
         self.goal_acceleration = 0
         self.goal_yaw_rate = 0.
@@ -74,6 +74,7 @@ class DBWNode(object):
         rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_callback)
 
         srv = Server(PIDParamsConfig, self.config_callback)
+        self.last_time = rospy.get_time()
 
         self.loop()
 
@@ -107,7 +108,12 @@ class DBWNode(object):
             angular_velocity = 0.0
             linear_acceleration = 0.0
             angular_acceleration = 0.0
-            deltat = 0.02
+            #deltat = 0.02
+
+            current_time = rospy.get_time()
+            sample_time = current_time - self.last_time
+            self.last_time = current_time
+            deltat = sample_time
 
             goal_linear_acceleration, goal_angular_velocity = self.twist_controller.control(self.goal_acceleration,
                                                                                             self.goal_yaw_rate,

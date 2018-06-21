@@ -21,18 +21,7 @@ import time
 import numpy as np
 
 
-STATE_COUNT_THRESHOLD = 1
-
-# gamma correction function used to reduce high sun exposure 
-def adjust_gamma(image, gamma=1.0):
-    # build a lookup table mapping the pixel values [0, 255] to
-    # their adjusted gamma values
-    invGamma = 1.0 / gamma
-    table = np.array([((i / 255.0) ** invGamma) * 255
-        for i in np.arange(0, 256)]).astype("uint8")
- 
-    # apply gamma correction using the lookup table
-    return cv2.LUT(image, table) 
+STATE_COUNT_THRESHOLD = 3
 
 
 class TLDetector(object):
@@ -140,7 +129,7 @@ class TLDetector(object):
             msg = self._prepare_result_msg(self.state, self.last_wp)
             rospy.loginfo(msg)
             self.upcoming_red_light_pub.publish(msg)
-            self.state_count += 1
+        self.state_count += 1
 
     def _prepare_result_msg(self, tl_state, tl_stop_waypoint):
         tl_result = GlobalTrafficLightMessage()
@@ -202,29 +191,16 @@ class TLDetector(object):
         light_state = TrafficLight.UNKNOWN
         light_state_via_msg = None
 
-        #get the ground truth traffic light states through the traffic light messages
-        # for tl in self.lights:
-        #     rospy.loginfo(light)
-        #     dist = math.sqrt((tl.pose.pose.position.x - light.position.x)**2 + (tl.pose.pose.position.y - light.position.y)**2)
-        #     if (dist < 50): #means we found the light close to the stop line
-        #         light_state_via_msg = tl.state
-        #         break #no need to parse other lights once light was found
 
-        #detect traffic light position (box) in image
-        #convert image to np array
         img_full_np = self.light_classifier.load_image_into_numpy_array(processed_img)
         
-        #apply gamma correction to site testing if parameter set in launch file.
-        if (self.gamma_correction == True):
-            img_full_np = adjust_gamma(img_full_np, 0.4)
-        
-        # if simulator, we apply detection and classification separately
+    
         
         unknown = False
 
       
       
-        b, conf, cls_idx = self.light_classifier.get_localization_classification(img_full_np, visual=False)
+        b, conf, cls_idx = self.light_classifier.get_localization_classification(img_full_np)
         
         if np.array_equal(b, np.zeros(4)):
             print ('unknown')
@@ -254,24 +230,6 @@ class TLDetector(object):
             
         return light_state
 
-    def get_light_state2(self, light):
-        """Determines the current color of the traffic light
-
-        Args:
-            light (TrafficLight): light to classify
-
-        Returns:
-            int: ID of traffic light color (specified in styx_msgs/TrafficLight)
-
-        """
-        # if(not self.has_image):
-        #     self.prev_light_loc = None
-        #     return False
-
-        # cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
-
-        #Get classification
-        return light.state
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its

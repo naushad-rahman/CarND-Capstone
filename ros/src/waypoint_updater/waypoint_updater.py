@@ -270,11 +270,6 @@ class WaypointUpdater(object):
         final_waypoints_msg.header.stamp = rospy.Time(0)
         final_waypoints_msg.waypoints = list(self.final_waypoints)
         self.final_waypoints_pub.publish(final_waypoints_msg)
-        compare = 'o={:d} dis={:f} '.format(self.closestWaypoint,self.distance_to_tl )
-        rospy.loginfo(compare)
-        #v0 = self.get_waypoint_velocity(self.final_waypoints[0])  
-        #v1 = self.get_waypoint_velocity(self.final_waypoints[1]) 
-        #rospy.logwarn("wp0:%f wp1:%f st:%s d:%f sd:%f",v0,v1,self.car_action,self.distance_to_tl,self.safe_distance)
 
     def closest_waypoint(self, position, waypoints):
         
